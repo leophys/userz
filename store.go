@@ -2,10 +2,11 @@ package userz
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
-// Store represents the storage backend for the Users
+// Store represents the storage backend for the Users.
 type Store interface {
 	Add(ctx context.Context, user *UserData) (*User, error)
 	Update(ctx context.Context, id string, user *UserData) (*User, error)
@@ -13,7 +14,7 @@ type Store interface {
 	List(ctx context.Context, filter *Filter[any], pageSize uint) (Iterator[[]*User], error)
 }
 
-// UserData represents the data needed to create a user
+// UserData represents the data needed to create or alter a user.
 type UserData struct {
 	FirstName string
 	LastName  string
@@ -42,14 +43,26 @@ type Filter[Backend any] struct {
 // at hand.
 type Condition[T Conditionable, Backend any] interface {
 	// Evaluate translates the abstract Condition into a form that is
-	// usable by the backend
+	// usable by the backend.
 	Evaluate() (Backend, error)
 	// Hash returns a unique identified deterministically derived by the
-	// values of the condition
+	// values of the condition.
 	Hash() (string, error)
 }
 
-// Iterator is the interface to iterate over the results
+// Iterator is the interface to iterate over the results.
 type Iterator[T any] interface {
+	// Len returns some data regarding the pagination.
+	Len() PaginationData
+	// Next returns the next page. It returns ErrNoMorePages after the last page.
 	Next(ctx context.Context) (T, error)
 }
+
+// PaginationData regards the global information pertaining the pagination.
+type PaginationData struct {
+	TotalElements int
+	TotalPages    int
+	PageSize      int
+}
+
+var ErrNoMorePages = errors.New("the iterator has been consumed")

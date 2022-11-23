@@ -15,12 +15,12 @@ type Store interface {
 
 // UserData represents the data needed to create a user
 type UserData struct {
-	FirstName         string
-	LastName          string
-	NickName          string
-	PlaintextPassword string
-	Email             string
-	Country           string
+	FirstName string
+	LastName  string
+	NickName  string
+	Password  *Password
+	Email     string
+	Country   string
 }
 
 // Filter is a condition to be used to filter users. The backend type
@@ -40,11 +40,11 @@ type Filter[Backend any] struct {
 // Condition is the interface any backend will need to implement in order
 // to translate the given condition in a valid expression for the backend
 // at hand.
-type Condition[T Conditionable, Backend any] interface{
-    // Evaluate translates the abstract Condition into a form that is
-    // usable by the backend
-    Evaluate() (Backend, error)
-    // Hash returns a unique identified deterministically derived by the
-    // values of the condition
-    Hash() (string, error)
+type Condition[T Conditionable, Backend any] interface {
+	// Evaluate translates the abstract Condition into a form that is
+	// usable by the backend
+	Evaluate() (Backend, error)
+	// Hash returns a unique identified deterministically derived by the
+	// values of the condition
+	Hash() (string, error)
 }

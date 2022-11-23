@@ -10,7 +10,7 @@ type Store interface {
 	Add(ctx context.Context, user *UserData) (*User, error)
 	Update(ctx context.Context, id string, user *UserData) (*User, error)
 	Remove(ctx context.Context, id string) (*User, error)
-	List(ctx context.Context, filter *Filter[any]) ([]*User, error)
+	List(ctx context.Context, filter *Filter[any], pageSize uint) (Iterator[[]*User], error)
 }
 
 // UserData represents the data needed to create a user
@@ -47,4 +47,9 @@ type Condition[T Conditionable, Backend any] interface {
 	// Hash returns a unique identified deterministically derived by the
 	// values of the condition
 	Hash() (string, error)
+}
+
+// Iterator is the interface to iterate over the results
+type Iterator[T any] interface {
+	Next(ctx context.Context) (T, error)
 }

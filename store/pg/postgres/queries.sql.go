@@ -59,63 +59,27 @@ func (q *Queries) Add(ctx context.Context, arg AddParams) (User, error) {
 	return i, err
 }
 
-const listPaginated = `-- name: ListPaginated :many
-SELECT
-    id, first_name, last_name, nickname, password, email, country, created_at, updated_at,
-    count(*) OVER() AS total_elements
+const get = `-- name: Get :one
+SELECT id, first_name, last_name, nickname, password, email, country, created_at, updated_at
 FROM users
-WHERE $3
-OFFSET $1
-LIMIT $2
+WHERE id = $1
 `
 
-type ListPaginatedParams struct {
-	Offset int32
-	Limit  int32
-}
-
-type ListPaginatedRow struct {
-	ID            uuid.UUID
-	FirstName     sql.NullString
-	LastName      sql.NullString
-	Nickname      string
-	Password      string
-	Email         string
-	Country       sql.NullString
-	CreatedAt     sql.NullTime
-	UpdatedAt     sql.NullTime
-	TotalElements int64
-}
-
-func (q *Queries) ListPaginated(ctx context.Context, arg ListPaginatedParams) ([]ListPaginatedRow, error) {
-	rows, err := q.db.Query(ctx, listPaginated, arg.Offset, arg.Limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListPaginatedRow
-	for rows.Next() {
-		var i ListPaginatedRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.FirstName,
-			&i.LastName,
-			&i.Nickname,
-			&i.Password,
-			&i.Email,
-			&i.Country,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.TotalElements,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) Get(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, get, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.FirstName,
+		&i.LastName,
+		&i.Nickname,
+		&i.Password,
+		&i.Email,
+		&i.Country,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const remove = `-- name: Remove :one

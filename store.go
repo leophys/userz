@@ -60,9 +60,9 @@ type Iterator[T any] interface {
 
 // PaginationData regards the global information pertaining the pagination.
 type PaginationData struct {
-	TotalElements int
-	TotalPages    int
-	PageSize      int
+	TotalElements uint
+	TotalPages    uint
+	PageSize      uint
 }
 
 var ErrNoMorePages = errors.New("the iterator has been consumed")

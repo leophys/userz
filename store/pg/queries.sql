@@ -1,3 +1,8 @@
+-- name: Get :one
+SELECT *
+FROM users
+WHERE id = $1;
+
 -- name: Add :one
 INSERT INTO users (
     first_name,
@@ -29,12 +34,3 @@ DELETE FROM users
 WHERE
     id = $1
 RETURNING *;
-
--- name: ListPaginated :many
-SELECT
-    *,
-    count(*) OVER() AS total_elements
-FROM users
-WHERE $3
-OFFSET $1
-LIMIT $2;

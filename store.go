@@ -44,10 +44,10 @@ type Filter[Backend any] struct {
 type Condition[T Conditionable, Backend any] interface {
 	// Evaluate translates the abstract Condition into a form that is
 	// usable by the backend.
-	Evaluate() (Backend, error)
+	Evaluate(field string) (Backend, error)
 	// Hash returns a unique identified deterministically derived by the
 	// values of the condition.
-	Hash() (string, error)
+	Hash(field string) (string, error)
 }
 
 // Iterator is the interface to iterate over the results.

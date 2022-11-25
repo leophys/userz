@@ -65,45 +65,28 @@ type ReprCondition[T Conditionable] Cond[T]
 
 var _ Condition[string, string] = &ReprCondition[string]{}
 
-func (c *ReprCondition[T]) Evaluate() (result string, err error) {
-	var zero T
-
-	// validation
-	switch t := reflect.TypeOf(zero); t.Kind() {
-	case reflect.String:
-		if c.Op != OpEq && c.Op != OpNe && c.Op != OpBegins && c.Op != OpEnds {
-			return "", fmt.Errorf("operation not allowed on a string: %s", c.Op)
-		}
-	case reflect.Struct:
-		if t.Name() == "Time" && (c.Op == OpInside || c.Op == OpOutside) {
-			if len(c.Values) != 2 {
-				return "", fmt.Errorf("intervals on time.Time must have exactly 2 values, start and end")
-			}
-		}
-		fallthrough
-	default:
-		if c.Op == OpBegins || c.Op == OpEnds {
-			return "", fmt.Errorf("operation not allowed on a %T: %s", zero, c.Op)
-		}
+func (c *ReprCondition[T]) Evaluate(field string) (result string, err error) {
+	if err := ValidateOp(c.Op, c.Values...); err != nil {
+		return "", err
 	}
 
 	// apply the operation to the correct type
 	switch c.Op {
 	case OpEq, OpNe, OpGt, OpGe, OpLt, OpLe, OpBegins, OpEnds: // scalar
-		return fmt.Sprintf("%s %v", c.Op, c.Value), nil
+		return fmt.Sprintf("%s %s %v", field, c.Op, c.Value), nil
 	default: // vector
 		values := []T{}
 		if c.Values != nil {
 			values = c.Values
 		}
 
-		return fmt.Sprintf("%s %v", c.Op, values), nil
+		return fmt.Sprintf("%s %s %v", field, c.Op, values), nil
 	}
 }
 
-func (c *ReprCondition[T]) Hash() (string, error) {
+func (c *ReprCondition[T]) Hash(field string) (string, error) {
 	h := fnv.New32a()
-	repr, err := c.Evaluate()
+	repr, err := c.Evaluate(field)
 	if err != nil {
 		return "", err
 	}
@@ -113,4 +96,29 @@ func (c *ReprCondition[T]) Hash() (string, error) {
 	}
 
 	return fmt.Sprint(h.Sum32()), nil
+}
+
+func ValidateOp[T Conditionable](op Op, values ...T) error {
+	var zero T
+
+	// validation
+	switch t := reflect.TypeOf(zero); t.Kind() {
+	case reflect.String:
+		if op != OpEq && op != OpNe && op != OpBegins && op != OpEnds {
+			return fmt.Errorf("operation not allowed on a string: %s", op)
+		}
+	case reflect.Struct:
+		if t.Name() == "Time" && (op == OpInside || op == OpOutside) {
+			if len(values) != 2 {
+				return fmt.Errorf("intervals on time.Time must have exactly 2 values, start and end")
+			}
+		}
+		fallthrough
+	default:
+		if op == OpBegins || op == OpEnds {
+			return fmt.Errorf("operation not allowed on a %T: %s", zero, op)
+		}
+	}
+
+	return nil
 }

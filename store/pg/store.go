@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 
 	"github.com/leophys/userz"
@@ -83,7 +84,14 @@ func (s *PGStore) Add(ctx context.Context, user *userz.UserData) (*userz.User, e
 }
 
 func (s *PGStore) Update(ctx context.Context, id string, user *userz.UserData) (*userz.User, error) {
-	params := postgres.UpdateParams{}
+	uuidId, err := uuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+
+	params := postgres.UpdateParams{
+		ID: uuidId,
+	}
 
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -91,12 +99,9 @@ func (s *PGStore) Update(ctx context.Context, id string, user *userz.UserData) (
 	}
 	defer tx.Rollback(ctx)
 
-	uuidId, err := uuid.Parse(id)
-	if err != nil {
-		return nil, err
-	}
+	q := s.q.WithTx(tx.(pgx.Tx))
 
-	cur, err := s.q.Get(ctx, uuidId)
+	cur, err := q.Get(ctx, uuidId)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +151,7 @@ func (s *PGStore) Update(ctx context.Context, id string, user *userz.UserData) (
 		params.Country = cur.Country
 	}
 
-	pgResult, err := s.q.Update(ctx, params)
+	pgResult, err := q.Update(ctx, params)
 	if err != nil {
 		return nil, err
 	}

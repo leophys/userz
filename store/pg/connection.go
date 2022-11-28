@@ -14,11 +14,15 @@ type preparer interface {
 	Prepare(ctx context.Context, name, statement string) (*pgconn.StatementDescription, error)
 }
 
+type transacter interface {
+	Begin(context.Context) (pgx.Tx, error)
+}
+
 // db represents a connection which is not in transaction.
 type db interface {
-	Begin(context.Context) (tx, error)
 	postgres.DBTX
 	preparer
+	transacter
 }
 
 // tx represents a connection with an open transaction.
@@ -37,7 +41,7 @@ type PGPooledConn struct {
 	pool *pgxpool.Pool
 }
 
-func (c *PGPooledConn) Begin(ctx context.Context) (tx, error) {
+func (c *PGPooledConn) Begin(ctx context.Context) (pgx.Tx, error) {
 	return c.pool.Begin(ctx)
 }
 

@@ -5,17 +5,24 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/leophys/userz"
 )
 
-var _ userz.Condition[string, string] = &PGCondition[string]{}
+const (
+	pgTimeFormat = "2006-01-02 15:04:05-07"
+)
+
+var _ userz.Condition[string] = &PGCondition[string]{}
 
 type sqlOp[T userz.Conditionable] userz.Op
 
-func (op sqlOp[T]) fmtStr() string {
+func (op sqlOp[T]) fmtStr(field string, value T, values ...T) string {
 	var valueFmtStr string
 	var zero T
+	var isTime bool
+
 	switch t := reflect.TypeOf(zero); t.Kind() {
 	case reflect.Int, reflect.Uint, reflect.Float32, reflect.Float64:
 		valueFmtStr = "%s"
@@ -24,56 +31,102 @@ func (op sqlOp[T]) fmtStr() string {
 	case reflect.Struct:
 		if t.Name() == "Time" {
 			valueFmtStr = "'%s'::TIMESTAMPTZ"
+			isTime = true
 		}
-
 	}
+
 	switch userz.Op(op) {
 	case userz.OpEq:
-		return "%s = " + valueFmtStr
+		return fmt.Sprintf("%s = %s",
+			field,
+			fmt.Sprintf(valueFmtStr, value),
+		)
 	case userz.OpNe:
-		return "%s != " + valueFmtStr
+		return fmt.Sprintf("%s != %s",
+			field,
+			fmt.Sprintf(valueFmtStr, value),
+		)
 	case userz.OpGt:
-		return "%s > " + valueFmtStr
+		return fmt.Sprintf("%s > %s",
+			field,
+			fmt.Sprintf(valueFmtStr, value),
+		)
 	case userz.OpGe:
-		return "%s >= " + valueFmtStr
+		return fmt.Sprintf("%s >= %s",
+			field,
+			fmt.Sprintf(valueFmtStr, value),
+		)
 	case userz.OpLt:
-		return "%s < " + valueFmtStr
+		return fmt.Sprintf("%s < %s",
+			field,
+			fmt.Sprintf(valueFmtStr, value),
+		)
 	case userz.OpLe:
-		return "%s <= " + valueFmtStr
+		return fmt.Sprintf("%s <= %s",
+			field,
+			fmt.Sprintf(valueFmtStr, value),
+		)
 	case userz.OpInside:
-		return "%s IN " + valueFmtStr
+		if isTime {
+			return fmt.Sprintf(
+				"%s >= %s AND %s <= %s",
+				field, fmtTimestamp(valueFmtStr, values[0]),
+				field, fmtTimestamp(valueFmtStr, values[1]),
+			)
+		}
+
+		return fmt.Sprintf("%s IN %s", field, fmtList(valueFmtStr, values...))
 	case userz.OpOutside:
-		return "%s NOT IN " + valueFmtStr
+		if isTime {
+			return fmt.Sprintf(
+				"(%s <= %s OR %s >= %s)",
+				field, fmtTimestamp(valueFmtStr, values[0]),
+				field, fmtTimestamp(valueFmtStr, values[1]),
+			)
+		}
+
+		return fmt.Sprintf("%s NOT IN %s", field, fmtList(valueFmtStr, values...))
 	case userz.OpBegins:
-		return "%s LIKE '%s%%'"
+		return fmt.Sprintf("%s LIKE '%s%%'",
+			field,
+			fmt.Sprint(value),
+		)
 	case userz.OpEnds:
-		return "%s LIKE '%%%s'"
+		return fmt.Sprintf("%s LIKE '%%%s'",
+			field,
+			fmt.Sprint(value),
+		)
 	}
 
 	return ""
 }
 
+func fmtList[T any](fmtStr string, values ...T) string {
+	var fmtValues []string
+	for _, v := range values {
+		fmtValues = append(fmtValues, fmt.Sprintf(fmtStr, v))
+	}
+
+	return fmt.Sprintf("(%s)", strings.Join(fmtValues, ","))
+}
+
+func fmtTimestamp(fmtStr string, timestamp any) string {
+	ts, ok := timestamp.(time.Time)
+	if !ok {
+		panic(fmt.Sprintf("not a timestamp: %T", timestamp))
+	}
+
+	return fmt.Sprintf(fmtStr, ts.Format(pgTimeFormat))
+}
+
 type PGCondition[T userz.Conditionable] userz.Cond[T]
 
-func (c *PGCondition[T]) Evaluate(field string) (string, error) {
-	if err := userz.ValidateOp(c.Op, c.Values...); err != nil {
+func (c *PGCondition[T]) Evaluate(field string) (any, error) {
+	if err := userz.ValidateOp(c.Op, c.Value, c.Values...); err != nil {
 		return "", err
 	}
 
-	fmtStr := sqlOp[T](c.Op).fmtStr()
-
-	// apply the operation to the correct type
-	switch c.Op {
-	case userz.OpEq, userz.OpNe, userz.OpGt, userz.OpGe, userz.OpLt, userz.OpLe, userz.OpBegins, userz.OpEnds: // scalar
-		return fmt.Sprintf(fmtStr, field, c.Value), nil
-	default: // vector
-		values := []T{}
-		if c.Values != nil {
-			values = c.Values
-		}
-
-		return fmt.Sprintf(fmtStr, field, values), nil
-	}
+	return sqlOp[T](c.Op).fmtStr(field, c.Value, c.Values...), nil
 }
 
 func (c *PGCondition[T]) Hash(field string) (string, error) {
@@ -82,10 +135,13 @@ func (c *PGCondition[T]) Hash(field string) (string, error) {
 		return "", err
 	}
 
-	return hash(eval), nil
+	return hash(eval.(string)), nil
 }
 
-func formatFilter(filter *userz.Filter[string]) (string, error) {
+func formatFilter(filter *userz.Filter) (string, error) {
+	if filter == nil {
+		return "1 = 1", nil
+	}
 	var statements []string
 
 	if filter.Id != "" {
@@ -98,7 +154,7 @@ func formatFilter(filter *userz.Filter[string]) (string, error) {
 			return "", err
 		}
 
-		statements = append(statements, eval)
+		statements = append(statements, eval.(string))
 	}
 
 	if filter.LastName != nil {
@@ -107,7 +163,7 @@ func formatFilter(filter *userz.Filter[string]) (string, error) {
 			return "", err
 		}
 
-		statements = append(statements, eval)
+		statements = append(statements, eval.(string))
 	}
 
 	if filter.NickName != nil {
@@ -116,7 +172,7 @@ func formatFilter(filter *userz.Filter[string]) (string, error) {
 			return "", err
 		}
 
-		statements = append(statements, eval)
+		statements = append(statements, eval.(string))
 	}
 
 	if filter.Email != nil {
@@ -125,7 +181,7 @@ func formatFilter(filter *userz.Filter[string]) (string, error) {
 			return "", err
 		}
 
-		statements = append(statements, eval)
+		statements = append(statements, eval.(string))
 	}
 
 	if filter.Country != nil {
@@ -134,7 +190,7 @@ func formatFilter(filter *userz.Filter[string]) (string, error) {
 			return "", err
 		}
 
-		statements = append(statements, eval)
+		statements = append(statements, eval.(string))
 	}
 
 	if filter.CreatedAt != nil {
@@ -143,7 +199,7 @@ func formatFilter(filter *userz.Filter[string]) (string, error) {
 			return "", err
 		}
 
-		statements = append(statements, eval)
+		statements = append(statements, eval.(string))
 	}
 
 	if filter.UpdatedAt != nil {
@@ -152,7 +208,7 @@ func formatFilter(filter *userz.Filter[string]) (string, error) {
 			return "", err
 		}
 
-		statements = append(statements, eval)
+		statements = append(statements, eval.(string))
 	}
 
 	return strings.Join(statements, " AND "), nil

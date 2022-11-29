@@ -63,10 +63,10 @@ type Cond[T Conditionable] struct {
 
 type ReprCondition[T Conditionable] Cond[T]
 
-var _ Condition[string, string] = &ReprCondition[string]{}
+var _ Condition[string] = &ReprCondition[string]{}
 
-func (c *ReprCondition[T]) Evaluate(field string) (result string, err error) {
-	if err := ValidateOp(c.Op, c.Values...); err != nil {
+func (c *ReprCondition[T]) Evaluate(field string) (result any, err error) {
+	if err := ValidateOp(c.Op, c.Value, c.Values...); err != nil {
 		return "", err
 	}
 
@@ -91,32 +91,38 @@ func (c *ReprCondition[T]) Hash(field string) (string, error) {
 		return "", err
 	}
 
-	if _, err := h.Write([]byte(repr)); err != nil {
+	if _, err := h.Write([]byte(repr.(string))); err != nil {
 		return "", err
 	}
 
 	return fmt.Sprint(h.Sum32()), nil
 }
 
-func ValidateOp[T Conditionable](op Op, values ...T) error {
+func ValidateOp[T Conditionable](op Op, value T, values ...T) error {
 	var zero T
 
-	// validation
-	switch t := reflect.TypeOf(zero); t.Kind() {
-	case reflect.String:
-		if op != OpEq && op != OpNe && op != OpBegins && op != OpEnds {
-			return fmt.Errorf("operation not allowed on a string: %s", op)
-		}
-	case reflect.Struct:
-		if t.Name() == "Time" && (op == OpInside || op == OpOutside) {
-			if len(values) != 2 {
+	if len(values) == 0 { // validation of scalar
+		switch t := reflect.TypeOf(zero); t.Kind() {
+		case reflect.String:
+			if op != OpEq && op != OpNe && op != OpBegins && op != OpEnds {
+				return fmt.Errorf("operation not allowed on a string: %s", op)
+			}
+		case reflect.Struct:
+			if t.Name() == "Time" && (op == OpInside || op == OpOutside) && len(values) != 2 {
 				return fmt.Errorf("intervals on time.Time must have exactly 2 values, start and end")
 			}
+			fallthrough
+		default:
+			if op == OpBegins || op == OpEnds {
+				return fmt.Errorf("operation not allowed on a %T: %s", zero, op)
+			}
 		}
-		fallthrough
-	default:
-		if op == OpBegins || op == OpEnds {
-			return fmt.Errorf("operation not allowed on a %T: %s", zero, op)
+	} else { // validation of vector
+		if op != OpInside && op != OpOutside {
+			return fmt.Errorf("operation not allowed on a slice of %T: %s", zero, op)
+		}
+		if reflect.TypeOf(zero).Name() == "Time" && len(values) != 2 {
+			return fmt.Errorf("intervals on time.Time must have exactly 2 values, start and end")
 		}
 	}
 

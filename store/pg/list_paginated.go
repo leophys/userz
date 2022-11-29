@@ -27,34 +27,35 @@ type preparePaginatedParams struct {
 }
 
 type listPaginatedRow struct {
-	ID            uuid.UUID
-	FirstName     sql.NullString
-	LastName      sql.NullString
-	Nickname      string
-	Password      string
-	Email         string
-	Country       sql.NullString
-	CreatedAt     sql.NullTime
-	UpdatedAt     sql.NullTime
-	TotalElements int64
+	ID        uuid.UUID
+	FirstName sql.NullString
+	LastName  sql.NullString
+	Nickname  string
+	Password  string
+	Email     string
+	Country   sql.NullString
+	CreatedAt sql.NullTime
+	UpdatedAt sql.NullTime
 }
 
 func prepareListPaginated(ctx context.Context, db db, params preparePaginatedParams) (queryFunc, error) {
+	query := fmt.Sprintf(listPaginated, params.filter)
+
 	if _, err := db.Prepare(
 		ctx,
 		params.queryName,
-		fmt.Sprintf(listPaginated, params.filter)); err != nil {
+		query); err != nil {
 		return nil, err
 	}
 
 	return func(ctx context.Context, offset uint) ([]*userz.User, uint, error) {
-		rows, err := db.Query(ctx, listPaginated, offset, params.pageSize)
+		rows, err := db.Query(ctx, query, offset, params.pageSize)
 		if err != nil {
 			return nil, 0, err
 		}
 		defer rows.Close()
 
-		var totalRows uint
+		var totalRows int64
 		var result []*userz.User
 
 		for rows.Next() {
@@ -69,7 +70,6 @@ func prepareListPaginated(ctx context.Context, db db, params preparePaginatedPar
 				&i.Country,
 				&i.CreatedAt,
 				&i.UpdatedAt,
-				&i.TotalElements,
 				&totalRows,
 			); err != nil {
 				return nil, 0, err
@@ -93,6 +93,6 @@ func prepareListPaginated(ctx context.Context, db db, params preparePaginatedPar
 			return nil, 0, err
 		}
 
-		return result, totalRows, nil
+		return result, uint(totalRows), nil
 	}, nil
 }

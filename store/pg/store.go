@@ -205,18 +205,8 @@ func (s *PGStore) Remove(ctx context.Context, id string) (*userz.User, error) {
 	return result, nil
 }
 
-func (s *PGStore) List(ctx context.Context, filter *userz.Filter[any], pageSize uint) (userz.Iterator[[]*userz.User], error) {
-	// This is a dirty trick to constrain the type parameter of *userz.Filter to string
-	var f *userz.Filter[string]
-	var i any = filter
-	switch ff := i.(type) {
-	case *userz.Filter[string]:
-		f = ff
-	default:
-		return nil, fmt.Errorf("filter type not acceptable: %T", ff)
-	}
-
-	filterStr, err := formatFilter(f)
+func (s *PGStore) List(ctx context.Context, filter *userz.Filter, pageSize uint) (userz.Iterator[[]*userz.User], error) {
+	filterStr, err := formatFilter(filter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize filter into statement: %w", err)
 	}

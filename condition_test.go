@@ -30,10 +30,10 @@ func TestEvaluateString(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			res, err := tc.cond.Evaluate(tc.field)
 			if tc.err != nil {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Equal(t, tc.err.Error(), err.Error())
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tc.expected, res)
 			}
 		})
@@ -62,10 +62,10 @@ func TestEvaluateInt(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			res, err := tc.cond.Evaluate(tc.field)
 			if tc.err != nil {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Equal(t, tc.err.Error(), err.Error())
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tc.expected, res)
 			}
 		})
@@ -100,7 +100,7 @@ func TestEvaluateTime(t *testing.T) {
 				require.Error(t, err)
 				assert.Equal(t, tc.err.Error(), err.Error())
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tc.expected, res)
 			}
 		})

@@ -1,0 +1,24 @@
+version: "3"
+
+services:
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_PASSWORD: "passw0rd"
+      POSTGRES_USER: "userz"
+      POSTGRES_DB: "userz"
+    ports:
+      - 5432:5432
+
+  tester:
+    image: golang:1.19
+    environment:
+      POSTGRES_URL: "postgres://userz:passw0rd@db:5432/userz?sslmode=disable"
+      CGO_ENABLED: "0"
+    volumes:
+      - $PWD:/code
+      - $GOPATH/pkg:/go/
+    working_dir: /code
+    command: go test -v -p 1 -timeout 600s ./tests/... -tags=integration
+    depends_on:
+      - db

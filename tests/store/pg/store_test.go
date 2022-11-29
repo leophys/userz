@@ -91,6 +91,7 @@ func TestPGStore(t *testing.T) {
 		assert.Equal(user.LastName, u.LastName)
 		assert.Equal(user.NickName, u.NickName)
 		assert.Equal(user.Email, u.Email)
+		assert.WithinDuration(time.Now(), u.CreatedAt, time.Second)
 
 		users = append(users, u)
 		switch u.Country {
@@ -178,6 +179,65 @@ func TestPGStore(t *testing.T) {
 	assert.Equal(1, pages)
 	assert.Len(usersFound, 1)
 	assert.Equal(users[3], usersFound[0])
+
+	// Update a user
+	u, err := store.Update(ctx, users[0].Id, &userz.UserData{
+		Country: "CH",
+	})
+	assert.NoError(err)
+	assert.Equal("CH", u.Country)
+	assert.Equal(users[0].FirstName, u.FirstName)
+	assert.Equal(users[0].LastName, u.LastName)
+	assert.Equal(users[0].NickName, u.NickName)
+	assert.Equal(users[0].Email, u.Email)
+	assert.Equal(users[0].Password, u.Password)
+	assert.Equal(users[0].CreatedAt, u.CreatedAt)
+	assert.WithinDuration(time.Now(), u.UpdatedAt, time.Second)
+
+	pageResult, err := store.Page(ctx, &userz.Filter{
+		Country: &pg.PGCondition[string]{
+			Op:    userz.OpEq,
+			Value: "CH",
+		},
+	}, &userz.PageParams{
+		Size:   1,
+		Offset: 0,
+		Order:  userz.Order{OrdBy: userz.OrdByUpdatedAt, OrdDir: userz.OrdDirAsc},
+	})
+	assert.NoError(err)
+	require.Len(pageResult, 1)
+	assert.Equal(u.FirstName, pageResult[0].FirstName)
+	assert.Equal(u.LastName, pageResult[0].LastName)
+	assert.Equal(u.NickName, pageResult[0].NickName)
+	assert.Equal(u.Password, pageResult[0].Password)
+	assert.Equal(u.Email, pageResult[0].Email)
+	assert.Equal(u.Country, pageResult[0].Country)
+	assert.Equal(u.CreatedAt.String(), pageResult[0].CreatedAt.String())
+	assert.Equal(u.UpdatedAt.String(), pageResult[0].UpdatedAt.String())
+
+	// Delete a user
+	u, err = store.Remove(ctx, users[0].Id)
+	assert.NoError(err)
+	assert.Equal("CH", u.Country)
+	assert.Equal(users[0].FirstName, u.FirstName)
+	assert.Equal(users[0].LastName, u.LastName)
+	assert.Equal(users[0].NickName, u.NickName)
+	assert.Equal(users[0].Email, u.Email)
+	assert.Equal(users[0].Password, u.Password)
+	assert.Equal(users[0].CreatedAt, u.CreatedAt)
+
+	pageResult, err = store.Page(ctx, &userz.Filter{
+		Country: &pg.PGCondition[string]{
+			Op:    userz.OpEq,
+			Value: "CH",
+		},
+	}, &userz.PageParams{
+		Size:   1,
+		Offset: 0,
+		Order:  userz.Order{OrdBy: userz.OrdByUpdatedAt, OrdDir: userz.OrdDirAsc},
+	})
+	assert.NoError(err)
+	require.Len(pageResult, 0)
 }
 
 func newUser(password *userz.Password, nick, country string) *userz.UserData {

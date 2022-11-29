@@ -223,7 +223,7 @@ func (s *PGStore) List(ctx context.Context, filter *userz.Filter, pageSize uint)
 		queryName: filterHash,
 		filter:    filterStr,
 		pageSize:  pageSize,
-		orderBy:   userz.OrdByCreatedAt,
+		orderBy:   userz.Order{userz.OrdByCreatedAt, userz.OrdDirAsc},
 	})
 
 	return &PGIterator{

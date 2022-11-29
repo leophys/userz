@@ -19,6 +19,8 @@ test-clean:
 .PHONY: dbg-integration
 dbg-integration:
 	ID=$$($(COMPOSE) -f tests/docker-compose.yaml run --rm -d -p 5432:$(DBPORT) db) && \
-	GOTAGS="-tag='integration'" $(DLV) test --build-flags="github.com/leophys/userz/tests/store/pg" && \
+	   POSTGRES_URL="postgres://userz:passw0rd@localhost:5432/userz?sslmode=disable" \
+	   GOFLAGS="-tags='integration'" \
+	   $(DLV) test --build-flags="github.com/leophys/userz/tests/store/pg" && \
 	docker kill $${ID} && \
 	make test-clean

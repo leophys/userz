@@ -25,7 +25,7 @@ type preparePaginatedParams struct {
 	queryName string
 	filter    string
 	pageSize  uint
-	orderBy   userz.OrdBy
+	orderBy   userz.Order
 }
 
 type listPaginatedRow struct {

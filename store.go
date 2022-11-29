@@ -30,7 +30,7 @@ type UserData struct {
 type PageParams struct {
 	Size   uint
 	Offset uint
-	Order  OrdBy
+	Order  Order
 }
 
 // Filter is a condition to be used to filter users. The backend type

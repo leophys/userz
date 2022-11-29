@@ -16,6 +16,7 @@ SELECT
     count(*) OVER() AS total_elements
 FROM users
 WHERE %s
+ORDER BY %s
 OFFSET $1
 LIMIT $2
 `
@@ -24,6 +25,7 @@ type preparePaginatedParams struct {
 	queryName string
 	filter    string
 	pageSize  uint
+	orderBy   userz.OrdBy
 }
 
 type listPaginatedRow struct {
@@ -39,7 +41,7 @@ type listPaginatedRow struct {
 }
 
 func prepareListPaginated(ctx context.Context, db db, params preparePaginatedParams) (queryFunc, error) {
-	query := fmt.Sprintf(listPaginated, params.filter)
+	query := fmt.Sprintf(listPaginated, params.filter, params.orderBy)
 
 	if _, err := db.Prepare(
 		ctx,

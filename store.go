@@ -12,6 +12,7 @@ type Store interface {
 	Update(ctx context.Context, id string, user *UserData) (*User, error)
 	Remove(ctx context.Context, id string) (*User, error)
 	List(ctx context.Context, filter *Filter, pageSize uint) (Iterator[[]*User], error)
+	Page(ctx context.Context, filter *Filter, params *PageParams) ([]*User, error)
 }
 
 // UserData represents the data needed to create or alter a user.
@@ -22,6 +23,14 @@ type UserData struct {
 	Password  *Password
 	Email     string
 	Country   string
+}
+
+// PageParams conveys the information needed to specify a page for the Page
+// method.
+type PageParams struct {
+	Size   uint
+	Offset uint
+	Order  OrdBy
 }
 
 // Filter is a condition to be used to filter users. The backend type

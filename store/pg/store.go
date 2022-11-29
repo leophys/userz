@@ -211,10 +211,19 @@ func (s *PGStore) List(ctx context.Context, filter *userz.Filter, pageSize uint)
 		return nil, fmt.Errorf("failed to serialize filter into statement: %w", err)
 	}
 
+	var filterHash string
+	if filter != nil {
+		filterHash, err = filter.Hash()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get hash of filter: %w", err)
+		}
+	}
+
 	query, err := prepareListPaginated(ctx, s.db, preparePaginatedParams{
-		queryName: hash(filterStr),
+		queryName: filterHash,
 		filter:    filterStr,
 		pageSize:  pageSize,
+		orderBy:   userz.OrdByCreatedAt,
 	})
 
 	return &PGIterator{
@@ -222,4 +231,35 @@ func (s *PGStore) List(ctx context.Context, filter *userz.Filter, pageSize uint)
 		dbtx:     s.db,
 		query:    query,
 	}, nil
+}
+
+func (s *PGStore) Page(ctx context.Context, filter *userz.Filter, params *userz.PageParams) ([]*userz.User, error) {
+	filterStr, err := formatFilter(filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize filter into statement: %w", err)
+	}
+
+	var filterHash string
+	if filter != nil {
+		filterHash, err = filter.Hash()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get hash of filter: %w", err)
+		}
+	}
+
+	query, err := prepareListPaginated(ctx, s.db, preparePaginatedParams{
+		queryName: filterHash,
+		filter:    filterStr,
+		pageSize:  params.Size,
+		orderBy:   params.Order,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	users, _, err := query(ctx, params.Offset)
+	if err != nil {
+		return nil, err
+	}
+	return users, nil
 }

@@ -1,7 +1,6 @@
 package pg
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"reflect"
 	"strings"
@@ -18,7 +17,7 @@ var _ userz.Condition[string] = &PGCondition[string]{}
 
 type sqlOp[T userz.Conditionable] userz.Op
 
-func (op sqlOp[T]) fmtStr(field string, value T, values ...T) string {
+func (op sqlOp[T]) fmtStr(field string, value T, values ...T) (string, string) {
 	var valueFmtStr string
 	var zero T
 	var isTime bool
@@ -37,68 +36,56 @@ func (op sqlOp[T]) fmtStr(field string, value T, values ...T) string {
 
 	switch userz.Op(op) {
 	case userz.OpEq:
-		return fmt.Sprintf("%s = %s",
-			field,
-			fmt.Sprintf(valueFmtStr, value),
-		)
+		outFmt := fmt.Sprintf("%s = ", field) + valueFmtStr
+		return outFmt, fmt.Sprintf(outFmt, value)
 	case userz.OpNe:
-		return fmt.Sprintf("%s != %s",
-			field,
-			fmt.Sprintf(valueFmtStr, value),
-		)
+		outFmt := fmt.Sprintf("%s != ", field) + valueFmtStr
+		return outFmt, fmt.Sprintf(outFmt, value)
 	case userz.OpGt:
-		return fmt.Sprintf("%s > %s",
-			field,
-			fmt.Sprintf(valueFmtStr, value),
-		)
+		outFmt := fmt.Sprintf("%s > ", field) + valueFmtStr
+		return outFmt, fmt.Sprintf(outFmt, value)
 	case userz.OpGe:
-		return fmt.Sprintf("%s >= %s",
-			field,
-			fmt.Sprintf(valueFmtStr, value),
-		)
+		outFmt := fmt.Sprintf("%s >= ", field) + valueFmtStr
+		return outFmt, fmt.Sprintf(outFmt, value)
 	case userz.OpLt:
-		return fmt.Sprintf("%s < %s",
-			field,
-			fmt.Sprintf(valueFmtStr, value),
-		)
+		outFmt := fmt.Sprintf("%s < ", field) + valueFmtStr
+		return outFmt, fmt.Sprintf(outFmt, value)
 	case userz.OpLe:
-		return fmt.Sprintf("%s <= %s",
-			field,
-			fmt.Sprintf(valueFmtStr, value),
-		)
+		outFmt := fmt.Sprintf("%s <= ", field) + valueFmtStr
+		return outFmt, fmt.Sprintf(outFmt, value)
 	case userz.OpInside:
 		if isTime {
-			return fmt.Sprintf(
+			outFmt := fmt.Sprintf("%s >= $1 AND %s <= $2", field, field)
+			return outFmt, fmt.Sprintf(
 				"%s >= %s AND %s <= %s",
 				field, fmtTimestamp(valueFmtStr, values[0]),
 				field, fmtTimestamp(valueFmtStr, values[1]),
 			)
 		}
 
-		return fmt.Sprintf("%s IN %s", field, fmtList(valueFmtStr, values...))
+		outFmt := fmt.Sprintf("%s IN ", field) + "%s"
+		return outFmt, fmt.Sprintf(outFmt, fmtList(valueFmtStr, values...))
 	case userz.OpOutside:
 		if isTime {
-			return fmt.Sprintf(
+			outFmt := fmt.Sprintf("(%s <= $1 OR %s >= $2)", field, field)
+			return outFmt, fmt.Sprintf(
 				"(%s <= %s OR %s >= %s)",
 				field, fmtTimestamp(valueFmtStr, values[0]),
 				field, fmtTimestamp(valueFmtStr, values[1]),
 			)
 		}
 
-		return fmt.Sprintf("%s NOT IN %s", field, fmtList(valueFmtStr, values...))
+		outFmt := fmt.Sprintf("%s NOT IN ", field) + "%s"
+		return outFmt, fmt.Sprintf(outFmt, fmtList(valueFmtStr, values...))
 	case userz.OpBegins:
-		return fmt.Sprintf("%s LIKE '%s%%'",
-			field,
-			fmt.Sprint(value),
-		)
+		outFmt := fmt.Sprintf("%s LIKE ", field) + "'%s%%'"
+		return outFmt, fmt.Sprintf(outFmt, fmt.Sprint(value))
 	case userz.OpEnds:
-		return fmt.Sprintf("%s LIKE '%%%s'",
-			field,
-			fmt.Sprint(value),
-		)
+		outFmt := fmt.Sprintf("%s LIKE ", field) + "'%%%s'"
+		return outFmt, fmt.Sprintf(outFmt, fmt.Sprint(value))
 	}
 
-	return ""
+	return "", ""
 }
 
 func fmtList[T any](fmtStr string, values ...T) string {
@@ -126,16 +113,17 @@ func (c *PGCondition[T]) Evaluate(field string) (any, error) {
 		return "", err
 	}
 
-	return sqlOp[T](c.Op).fmtStr(field, c.Value, c.Values...), nil
+	_, eval := sqlOp[T](c.Op).fmtStr(field, c.Value, c.Values...)
+	return eval, nil
 }
 
 func (c *PGCondition[T]) Hash(field string) (string, error) {
-	eval, err := c.Evaluate(field)
-	if err != nil {
+	if err := userz.ValidateOp(c.Op, c.Value, c.Values...); err != nil {
 		return "", err
 	}
 
-	return hash(eval.(string)), nil
+	fmtStr, _ := sqlOp[T](c.Op).fmtStr(field, c.Value, c.Values...)
+	return userz.Hash(fmtStr), nil
 }
 
 func formatFilter(filter *userz.Filter) (string, error) {
@@ -212,9 +200,4 @@ func formatFilter(filter *userz.Filter) (string, error) {
 	}
 
 	return strings.Join(statements, " AND "), nil
-}
-
-func hash(filterStr string) string {
-	sum := sha256.Sum256([]byte(filterStr))
-	return fmt.Sprintf("%x", sum)
 }

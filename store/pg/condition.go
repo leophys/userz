@@ -126,6 +126,8 @@ func (c *PGCondition[T]) Hash(field string) (string, error) {
 	return userz.Hash(fmtStr), nil
 }
 
+// NOTE: the type cast of each Condition[T] to *PGCondition[T] is necessary
+// to override the implementation of Evaluate.
 func formatFilter(filter *userz.Filter) (string, error) {
 	if filter == nil {
 		return "1 = 1", nil
@@ -137,7 +139,7 @@ func formatFilter(filter *userz.Filter) (string, error) {
 	}
 
 	if filter.FirstName != nil {
-		eval, err := filter.FirstName.Evaluate("first_name")
+		eval, err := filter.FirstName.(*PGCondition[string]).Evaluate("first_name")
 		if err != nil {
 			return "", err
 		}
@@ -146,7 +148,7 @@ func formatFilter(filter *userz.Filter) (string, error) {
 	}
 
 	if filter.LastName != nil {
-		eval, err := filter.LastName.Evaluate("last_name")
+		eval, err := filter.LastName.(*PGCondition[string]).Evaluate("last_name")
 		if err != nil {
 			return "", err
 		}
@@ -155,7 +157,7 @@ func formatFilter(filter *userz.Filter) (string, error) {
 	}
 
 	if filter.NickName != nil {
-		eval, err := filter.NickName.Evaluate("nickname")
+		eval, err := filter.NickName.(*PGCondition[string]).Evaluate("nickname")
 		if err != nil {
 			return "", err
 		}
@@ -164,7 +166,7 @@ func formatFilter(filter *userz.Filter) (string, error) {
 	}
 
 	if filter.Email != nil {
-		eval, err := filter.Email.Evaluate("email")
+		eval, err := filter.Email.(*PGCondition[string]).Evaluate("email")
 		if err != nil {
 			return "", err
 		}
@@ -173,7 +175,7 @@ func formatFilter(filter *userz.Filter) (string, error) {
 	}
 
 	if filter.Country != nil {
-		eval, err := filter.Country.Evaluate("country")
+		eval, err := filter.Country.(*PGCondition[string]).Evaluate("country")
 		if err != nil {
 			return "", err
 		}
@@ -182,7 +184,7 @@ func formatFilter(filter *userz.Filter) (string, error) {
 	}
 
 	if filter.CreatedAt != nil {
-		eval, err := filter.CreatedAt.Evaluate("created_at")
+		eval, err := filter.CreatedAt.(*PGCondition[time.Time]).Evaluate("created_at")
 		if err != nil {
 			return "", err
 		}
@@ -191,7 +193,7 @@ func formatFilter(filter *userz.Filter) (string, error) {
 	}
 
 	if filter.UpdatedAt != nil {
-		eval, err := filter.UpdatedAt.Evaluate("updated_at")
+		eval, err := filter.UpdatedAt.(*PGCondition[time.Time]).Evaluate("updated_at")
 		if err != nil {
 			return "", err
 		}

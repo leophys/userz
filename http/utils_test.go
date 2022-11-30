@@ -46,7 +46,10 @@ func (s *mockStore) List(ctx context.Context, filter *userz.Filter, pageSize uin
 
 func (s *mockStore) Page(ctx context.Context, filter *userz.Filter, params *userz.PageParams) ([]*userz.User, error) {
 	s.paged++
+	if uint(len(s.data)) < params.Size {
+		return nil, nil
+	}
 	users := s.data[0:params.Size]
-	s.data = s.data[params.Size+1:]
+	s.data = s.data[params.Size:]
 	return users, nil
 }

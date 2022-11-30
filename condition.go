@@ -55,10 +55,20 @@ func (o Op) String() string {
 	}
 }
 
+var _ Condition[string] = &Cond[string]{}
+
 type Cond[T Conditionable] struct {
 	Op
 	Value  T
 	Values []T
+}
+
+func (Cond[T]) Evaluate(string) (any, error) {
+	panic("Must override")
+}
+
+func (Cond[T]) Hash(string) (string, error) {
+	panic("Must override")
 }
 
 type ReprCondition[T Conditionable] Cond[T]

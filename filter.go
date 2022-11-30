@@ -1,8 +1,8 @@
 package userz
 
-import(
+import (
 	"crypto/sha256"
-    "fmt"
+	"fmt"
 )
 
 // Hash returns a unique identifier of the filter.

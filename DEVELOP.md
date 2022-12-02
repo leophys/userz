@@ -29,3 +29,24 @@ implementation will be in `./store/pg/postgres`.
 
 [gm]: https://github.com/golang-migrate/migrate
 [sqlc]: https://github.com/kyleconroy/sqlc
+
+## gRPC service
+
+### Prerequisites
+
+You need `protoc-gen-go` and `protoc-gen-go-grpc` installed. On archlinux you
+can get them on the AUR
+
+```
+pikaur -Sy protoc-gen-go protoc-gen-go-grpc
+```
+
+### Modify the service
+
+The definition of the service, together with the types, lays at
+[./proto/userz.proto](./proto/userz.proto). Modify the definitions therein and
+then run, from `proto/`
+
+```
+go generate
+```

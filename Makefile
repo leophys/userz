@@ -1,7 +1,49 @@
 GO ?= go
+DOCKER ?= docker
 COMPOSE ?= docker compose
+IMAGE ?= leophys/userz
 DBPORT ?= 5432
 DLV ?= dlv
+
+./bin:
+	mkdir -p bin
+
+./bin/userz: ./bin
+	$(GO) build $(BUILD_OPTS) -o bin/ ./...
+
+.PHONY: clean
+clean: ./bin
+	rm -f bin/userz
+
+.PHONY: build
+build: clean
+	make ./bin/userz
+
+.PHONY: prod
+prod: clean
+	make BUILD_OPTS="-ldflags '-w -s'" build
+
+.PHONY: build-image
+build-image:
+	$(DOCKER) build \
+		--build-arg=BUILD_OPTS="$(BUILD_OPTS)" \
+		-f cmd/userz/Dockerfile \
+		-t $(IMAGE) .
+
+.PHONY: build-image-prod
+build-image-prod:
+	make BUILD_OPTS="-ldflags '-w -s'" build-image
+
+.PHONY: run
+run:
+	$(COMPOSE) build
+	$(COMPOSE) up -d
+	$(COMPOSE) logs -f userz
+
+.PHONY:
+stop:
+	$(COMPOSE) stop
+	$(COMPOSE) down --volumes
 
 .PHONY: test
 test:

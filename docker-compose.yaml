@@ -1,0 +1,36 @@
+version: "3"
+
+services:
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_PASSWORD: "passw0rd"
+      POSTGRES_USER: "userz"
+      POSTGRES_DB: "userz"
+    ports:
+      - 5432:5432
+    volumes:
+      - pgdata:/var/lib/postgres/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  userz:
+    build:
+      context: .
+      dockerfile: cmd/userz/Dockerfile
+    environment:
+      POSTGRES_URL: "postgres://userz:passw0rd@db:5432/userz?sslmode=disable"
+      DEBUG: "true"
+    ports:
+      - 6000:6000
+      - 7000:7000
+      - 25000:25000
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

@@ -33,7 +33,7 @@ type listPaginatedRow struct {
 	FirstName sql.NullString
 	LastName  sql.NullString
 	Nickname  string
-	Password  string
+	Password  []byte
 	Email     string
 	Country   sql.NullString
 	CreatedAt sql.NullTime
@@ -77,13 +77,12 @@ func prepareListPaginated(ctx context.Context, db db, params preparePaginatedPar
 				return nil, 0, err
 			}
 
-			password := userz.Password(i.Password)
 			result = append(result, &userz.User{
 				Id:        i.ID.String(),
 				FirstName: i.FirstName.String,
 				LastName:  i.LastName.String,
 				NickName:  i.Nickname,
-				Password:  &password,
+				Password:  i.Password,
 				Email:     i.Email,
 				Country:   i.Country.String,
 				CreatedAt: i.CreatedAt.Time,

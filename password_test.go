@@ -13,7 +13,7 @@ import (
 const testPass = "ciaomiaobau"
 
 type testVessel struct {
-	Password *Password `json:"password"`
+	Password Password `json:"password"`
 }
 
 func TestPassword(t *testing.T) {
@@ -38,6 +38,6 @@ func TestPassword(t *testing.T) {
 	err = json.Unmarshal([]byte(w), &newVessel)
 	assert.NoError(err)
 
-	err = bcrypt.CompareHashAndPassword([]byte(*newVessel.Password), []byte(testPass))
+	err = bcrypt.CompareHashAndPassword([]byte(newVessel.Password), []byte(testPass))
 	assert.NoError(err)
 }

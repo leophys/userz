@@ -30,7 +30,7 @@ type AddParams struct {
 	FirstName sql.NullString
 	LastName  sql.NullString
 	Nickname  string
-	Password  string
+	Password  []byte
 	Email     string
 	Country   sql.NullString
 }
@@ -125,7 +125,7 @@ type UpdateParams struct {
 	FirstName sql.NullString
 	LastName  sql.NullString
 	Nickname  string
-	Password  string
+	Password  []byte
 	Email     string
 	Country   sql.NullString
 }

@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     first_name TEXT,
     last_name TEXT,
     nickname TEXT NOT NULL UNIQUE,
-    password TEXT NOT NULL,
+    password BYTEA NOT NULL,
     email TEXT NOT NULL UNIQUE,
     country TEXT,
     created_at TIMESTAMPTZ,

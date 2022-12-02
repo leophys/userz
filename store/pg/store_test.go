@@ -58,7 +58,8 @@ func TestStoreAdd(t *testing.T) {
 	require := require.New(t)
 
 	id := "e3a190a2-e22e-460e-80dc-1af731744031"
-	password, err := userz.NewPassword("1234567890")
+	plaintext := "1234567890"
+	password, err := dummyHasher(plaintext)
 	require.NoError(err)
 	createdAtStr := "2022-11-27T12:22:05Z"
 	createdAt, err := time.Parse(time.RFC3339, createdAtStr)
@@ -82,7 +83,7 @@ func TestStoreAdd(t *testing.T) {
 				"John",
 				"Doe",
 				"JD",
-				password.String(),
+				plaintext,
 				"jd@example.com",
 				"US",
 			): &row,
@@ -92,13 +93,14 @@ func TestStoreAdd(t *testing.T) {
 	store := &PGStore{
 		db: fakeDB,
 		q:  postgres.New(fakeDB),
+        hasher: dummyHasher,
 	}
 
 	res, err := store.Add(context.TODO(), &userz.UserData{
 		FirstName: "John",
 		LastName:  "Doe",
 		NickName:  "JD",
-		Password:  password,
+		Password:  plaintext,
 		Email:     "jd@example.com",
 		Country:   "US",
 	})
@@ -112,7 +114,8 @@ func TestStoreUpdate(t *testing.T) {
 	require := require.New(t)
 
 	id := "e3a190a2-e22e-460e-80dc-1af731744031"
-	password, err := userz.NewPassword("1234567890")
+	plaintext := "1234567890"
+	password, err := dummyHasher(plaintext)
 	require.NoError(err)
 	updatedAtStr := "2022-11-27T12:22:05Z"
 	updatedAt, err := time.Parse(time.RFC3339, updatedAtStr)
@@ -137,7 +140,7 @@ func TestStoreUpdate(t *testing.T) {
 				"John",
 				"Doe",
 				"JD",
-				password.String(),
+				plaintext,
 				"jd@example.com",
 				"US",
 			): &row,
@@ -148,13 +151,14 @@ func TestStoreUpdate(t *testing.T) {
 	store := &PGStore{
 		db: fakeDB,
 		q:  postgres.New(fakeDB),
+        hasher: dummyHasher,
 	}
 
 	res, err := store.Update(context.TODO(), id, &userz.UserData{
 		FirstName: "John",
 		LastName:  "Doe",
 		NickName:  "JD",
-		Password:  password,
+		Password:  plaintext,
 		Email:     "jd@example.com",
 		Country:   "US",
 	})
@@ -168,7 +172,7 @@ func TestStoreRemove(t *testing.T) {
 	require := require.New(t)
 
 	id := "e3a190a2-e22e-460e-80dc-1af731744031"
-	password, err := userz.NewPassword("1234567890")
+	password, err := dummyHasher("1234567890")
 	require.NoError(err)
 	createdAtStr := "2022-11-27T12:22:05Z"
 	createdAt, err := time.Parse(time.RFC3339, createdAtStr)
@@ -199,6 +203,7 @@ func TestStoreRemove(t *testing.T) {
 	store := &PGStore{
 		db: fakeDB,
 		q:  postgres.New(fakeDB),
+        hasher: dummyHasher,
 	}
 
 	res, err := store.Remove(context.TODO(), id)

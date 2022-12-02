@@ -17,12 +17,12 @@ type Store interface {
 
 // UserData represents the data needed to create or alter a user.
 type UserData struct {
-	FirstName string    `json:"first_name,omitempty"`
-	LastName  string    `json:"last_name,omitempty"`
-	NickName  string    `json:"nickname,omitempty"`
-	Password  *Password `json:"password,omitempty"`
-	Email     string    `json:"email,omitempty"`
-	Country   string    `json:"country,omitempty"`
+	FirstName string `json:"first_name,omitempty"`
+	LastName  string `json:"last_name,omitempty"`
+	NickName  string `json:"nickname,omitempty"`
+	Password  string `json:"password,omitempty"`
+	Email     string `json:"email,omitempty"`
+	Country   string `json:"country,omitempty"`
 }
 
 // PageParams conveys the information needed to specify a page for the Page

@@ -18,13 +18,11 @@ func TestAddHandler(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	password, _ := userz.NewPassword("passw0rd")
-
 	userData := userz.UserData{
 		FirstName: "John",
 		LastName:  "Doe",
 		NickName:  "jd",
-		Password:  password,
+		Password:  "passw0rd",
 		Email:     "jd@morgue.com",
 		Country:   "US",
 	}

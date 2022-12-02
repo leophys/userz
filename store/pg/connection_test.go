@@ -194,7 +194,7 @@ func (r *userRow) Scan(dest ...interface{}) error {
 		Valid:  true,
 	}
 	*(dest[3].(*string)) = r.NickName
-	*(dest[4].(*string)) = r.Password.String()
+	*(dest[4].(*[]byte)) = []byte(r.Password)
 	*(dest[5].(*string)) = r.Email
 	*(dest[6].(*sqllib.NullString)) = sqllib.NullString{
 		String: r.Country,
@@ -248,4 +248,10 @@ func (rs *userRows) Values() ([]interface{}, error) {
 
 func (rs *userRows) RawValues() [][]byte {
 	return nil
+}
+
+var _ userz.Passworder = dummyHasher
+
+func dummyHasher(password string) (userz.Password, error) {
+	return []byte(password), nil
 }

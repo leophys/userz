@@ -33,14 +33,14 @@ var (
 	nick7 = "nick7"
 	nick8 = "nick8"
 
-	password1, _ = userz.NewPassword("passw0rd1")
-	password2, _ = userz.NewPassword("passw0rd2")
-	password3, _ = userz.NewPassword("passw0rd3")
-	password4, _ = userz.NewPassword("passw0rd4")
-	password5, _ = userz.NewPassword("passw0rd5")
-	password6, _ = userz.NewPassword("passw0rd6")
-	password7, _ = userz.NewPassword("passw0rd7")
-	password8, _ = userz.NewPassword("passw0rd8")
+	password1 = "passw0rd1"
+	password2 = "passw0rd2"
+	password3 = "passw0rd3"
+	password4 = "passw0rd4"
+	password5 = "passw0rd5"
+	password6 = "passw0rd6"
+	password7 = "passw0rd7"
+	password8 = "passw0rd8"
 
 	country1 = "UK"
 	country2 = "US"
@@ -240,7 +240,7 @@ func TestPGStore(t *testing.T) {
 	require.Len(pageResult, 0)
 }
 
-func newUser(password *userz.Password, nick, country string) *userz.UserData {
+func newUser(password, nick, country string) *userz.UserData {
 	nidx := rand.Intn(len(names))
 	name := names[nidx]
 	names = append(names[:nidx], names[nidx+1:]...)

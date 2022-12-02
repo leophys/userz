@@ -18,7 +18,8 @@ var _ userz.Store = &PGStore{}
 // PGStore is the implementation of the store with a postgresql backend.
 type PGStore struct {
 	db
-	q *postgres.Queries
+	q      *postgres.Queries
+	hasher userz.Passworder
 }
 
 func NewPGStore(ctx context.Context, databaseURL string) (userz.Store, error) {
@@ -28,15 +29,21 @@ func NewPGStore(ctx context.Context, databaseURL string) (userz.Store, error) {
 	}
 
 	return &PGStore{
-		db: &PGPooledConn{pool},
-		q:  postgres.New(pool),
+		db:     &PGPooledConn{pool},
+		q:      postgres.New(pool),
+		hasher: userz.NewPassword,
 	}, nil
 }
 
 func (s *PGStore) Add(ctx context.Context, user *userz.UserData) (*userz.User, error) {
+	password, err := s.hasher(user.Password)
+	if err != nil {
+		return nil, err
+	}
+
 	params := postgres.AddParams{
 		Nickname: user.NickName,
-		Password: user.Password.String(),
+		Password: password,
 		Email:    user.Email,
 	}
 
@@ -66,14 +73,12 @@ func (s *PGStore) Add(ctx context.Context, user *userz.UserData) (*userz.User, e
 		return nil, err
 	}
 
-	password := userz.Password(pgResult.Password)
-
 	result := &userz.User{
 		Id:        pgResult.ID.String(),
 		FirstName: pgResult.FirstName.String,
 		LastName:  pgResult.LastName.String,
 		NickName:  pgResult.Nickname,
-		Password:  &password,
+		Password:  pgResult.Password,
 		Email:     pgResult.Email,
 		Country:   pgResult.Country.String,
 		CreatedAt: pgResult.CreatedAt.Time,
@@ -130,8 +135,13 @@ func (s *PGStore) Update(ctx context.Context, id string, user *userz.UserData) (
 		params.Nickname = cur.Nickname
 	}
 
-	if user.Password != nil {
-		params.Password = user.Password.String()
+	if user.Password != "" {
+		password, err := s.hasher(user.Password)
+		if err != nil {
+			return nil, err
+		}
+
+		params.Password = password
 	} else {
 		params.Password = cur.Password
 	}
@@ -156,14 +166,12 @@ func (s *PGStore) Update(ctx context.Context, id string, user *userz.UserData) (
 		return nil, err
 	}
 
-	password := userz.Password(pgResult.Password)
-
 	result := &userz.User{
 		Id:        pgResult.ID.String(),
 		FirstName: pgResult.FirstName.String,
 		LastName:  pgResult.LastName.String,
 		NickName:  pgResult.Nickname,
-		Password:  &password,
+		Password:  pgResult.Password,
 		Email:     pgResult.Email,
 		Country:   pgResult.Country.String,
 		CreatedAt: pgResult.CreatedAt.Time,
@@ -188,14 +196,12 @@ func (s *PGStore) Remove(ctx context.Context, id string) (*userz.User, error) {
 		return nil, err
 	}
 
-	password := userz.Password(pgResult.Password)
-
 	result := &userz.User{
 		Id:        pgResult.ID.String(),
 		FirstName: pgResult.FirstName.String,
 		LastName:  pgResult.LastName.String,
 		NickName:  pgResult.Nickname,
-		Password:  &password,
+		Password:  pgResult.Password,
 		Email:     pgResult.Email,
 		Country:   pgResult.Country.String,
 		CreatedAt: pgResult.CreatedAt.Time,

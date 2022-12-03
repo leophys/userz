@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
@@ -22,6 +23,7 @@ import (
 	"github.com/leophys/userz/http"
 	"github.com/leophys/userz/internal"
 	"github.com/leophys/userz/pkg/proto"
+	"github.com/leophys/userz/prometheus"
 	"github.com/leophys/userz/store/pg"
 )
 
@@ -163,6 +165,7 @@ func run(c *cli.Context) error {
 		logger.Err(err).Msg("Failed to initialize store")
 		return err
 	}
+	store = prometheus.NewMetricsStore(store)
 
 	api := httpapi.New(defaultHTTPRoute, store)
 
@@ -171,9 +174,13 @@ func run(c *cli.Context) error {
 		return err
 	}
 
+	metricsErr := serveMetrics(c, logger)
+
 	select {
-	case err := <-listenAndServe(ctx, api, c.Int("http-port")):
-		logger.Fatal().Err(err).Msg("Failed")
+	case err := <-serveHTTPApi(ctx, api, c.Int("http-port")):
+		logger.Fatal().Err(err).Msg("Failed to serve HTTP API")
+	case err := <-metricsErr:
+		logger.Fatal().Err(err).Msg("Failed to serve metrics")
 	case <-ctx.Done():
 		logger.Info().Err(ctx.Err()).Msg("Exiting")
 	}
@@ -242,7 +249,7 @@ func getPostgresURL(c *cli.Context) (string, error) {
 	), nil
 }
 
-func listenAndServe(ctx context.Context, router chi.Router, port int) <-chan error {
+func serveHTTPApi(ctx context.Context, router chi.Router, port int) <-chan error {
 	logger := zerolog.Ctx(ctx)
 	out := make(chan error)
 
@@ -310,4 +317,23 @@ func startGRPCServer(c *cli.Context, store userz.Store, logger *zerolog.Logger) 
 	}()
 
 	return nil
+}
+
+func serveMetrics(c *cli.Context, logger *zerolog.Logger) <-chan error {
+	out := make(chan error)
+
+	port := c.Int("metrics-port")
+
+	addr := fmt.Sprintf(":%d", port)
+
+	router := chi.NewRouter()
+	router.Method(http.MethodGet, "/metrics", promhttp.Handler())
+
+	logger.Info().Msgf("Serving metrics on '%s'", addr)
+
+	go func() {
+		out <- http.ListenAndServe(addr, router)
+	}()
+
+	return out
 }

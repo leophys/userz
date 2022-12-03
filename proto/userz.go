@@ -23,6 +23,12 @@ type Service struct {
 	UnimplementedUserzServer
 }
 
+func NewUserzServiceServer(store userz.Store) UserzServer {
+	return &Service{
+		store: store,
+	}
+}
+
 func (s *Service) Add(ctx context.Context, req *AddRequest) (*AddResponse, error) {
 	logger := zerolog.Ctx(ctx).
 		With().
@@ -81,7 +87,7 @@ func (s *Service) Update(ctx context.Context, req *UpdateRequest) (*UpdateRespon
 	}
 
 	return &UpdateResponse{
-		User: From(user),
+		User: FromUser(user),
 	}, nil
 }
 
@@ -112,7 +118,7 @@ func (s *Service) Remove(ctx context.Context, req *RemoveRequest) (*RemoveRespon
 	}
 
 	return &RemoveResponse{
-		User: From(user),
+		User: FromUser(user),
 	}, nil
 }
 
@@ -158,7 +164,7 @@ func (s *Service) List(req *ListRequest, server Userz_ListServer) error {
 
 		var respUsers []*User
 		for _, user := range users {
-			respUsers = append(respUsers, From(user))
+			respUsers = append(respUsers, FromUser(user))
 		}
 
 		if err := server.Send(&ListResponse{Users: respUsers}); err != nil {
@@ -168,6 +174,28 @@ func (s *Service) List(req *ListRequest, server Userz_ListServer) error {
 	}
 
 	return nil
+}
+
+func FromUserData(user *userz.UserData) *UserData {
+	data := &UserData{
+		NickName: user.NickName,
+		Email:    user.Email,
+		Password: user.Password,
+	}
+
+	if user.FirstName != "" {
+		data.FirstName = &user.FirstName
+	}
+
+	if user.LastName != "" {
+		data.LastName = &user.LastName
+	}
+
+	if user.Country != "" {
+		data.Country = &user.Country
+	}
+
+	return data
 }
 
 func (d *UserData) Into() *userz.UserData {
@@ -196,7 +224,7 @@ func (d *UserData) Into() *userz.UserData {
 	}
 }
 
-func From(user *userz.User) *User {
+func FromUser(user *userz.User) *User {
 	var firstName, lastName, country, createdAt, updatedAt *string
 
 	if user.FirstName != "" {
@@ -222,6 +250,7 @@ func From(user *userz.User) *User {
 	}
 
 	return &User{
+		Id:        user.Id,
 		FirstName: firstName,
 		LastName:  lastName,
 		NickName:  user.NickName,

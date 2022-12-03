@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,9 +15,13 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/leophys/userz"
 	"github.com/leophys/userz/http"
+	"github.com/leophys/userz/internal"
+	"github.com/leophys/userz/pkg/proto"
 	"github.com/leophys/userz/store/pg"
 )
 
@@ -53,6 +58,16 @@ var (
 			EnvVars: []string{"GRPC_PORT"},
 			Value:   defaultGRPCPort,
 			Action:  validatePort,
+		},
+		&cli.PathFlag{
+			Name:    "grpc-cert",
+			Usage:   "The path to a TLS certificate to use with the gRPC endpoint",
+			EnvVars: []string{"GRPC_CERT"},
+		},
+		&cli.PathFlag{
+			Name:    "grpc-key",
+			Usage:   "The path to a TLS key to use with the gRPC endpoint",
+			EnvVars: []string{"GRPC_KEY"},
 		},
 		&cli.IntFlag{
 			Name:    "metrics-port",
@@ -151,9 +166,17 @@ func run(c *cli.Context) error {
 
 	api := httpapi.New(defaultHTTPRoute, store)
 
-	go listenAndServe(ctx, api, c.Int("http-port"))
+	if err := startGRPCServer(c, store, logger); err != nil {
+		logger.Err(err).Msg("Failed to initialize gRPC server")
+		return err
+	}
 
-	<-ctx.Done()
+	select {
+	case err := <-listenAndServe(ctx, api, c.Int("http-port")):
+		logger.Fatal().Err(err).Msg("Failed")
+	case <-ctx.Done():
+		logger.Info().Err(ctx.Err()).Msg("Exiting")
+	}
 
 	return nil
 }
@@ -219,8 +242,9 @@ func getPostgresURL(c *cli.Context) (string, error) {
 	), nil
 }
 
-func listenAndServe(ctx context.Context, router chi.Router, port int) {
+func listenAndServe(ctx context.Context, router chi.Router, port int) <-chan error {
 	logger := zerolog.Ctx(ctx)
+	out := make(chan error)
 
 	addr := fmt.Sprintf(":%d", port)
 
@@ -229,8 +253,61 @@ func listenAndServe(ctx context.Context, router chi.Router, port int) {
 	if err := http.ListenAndServe(addr, router); err != nil {
 		if errors.Is(err, context.Canceled) {
 			logger.Info().Msg("HTTP API shut down")
+			out <- nil
 		} else {
-			logger.Err(err).Msg("HTTP API failed to be served")
+			logger.Warn().Err(err).Msg("HTTP API failed to be served")
+			out <- err
 		}
 	}
+
+	return out
+}
+
+func startGRPCServer(c *cli.Context, store userz.Store, logger *zerolog.Logger) (err error) {
+	port := c.Int("grpc-port")
+	certPath := c.Path("grpc-cert")
+	keyPath := c.Path("grpc-key")
+
+	if (certPath != "" && keyPath == "") || (certPath == "" && keyPath != "") {
+		return fmt.Errorf("both the certificate and the ")
+	}
+
+	var creds credentials.TransportCredentials
+	if certPath != "" {
+		creds, err = credentials.NewServerTLSFromFile(certPath, keyPath)
+		if err != nil {
+			return
+		}
+	} else {
+		cert, err := internal.GetDefaultCertificate()
+		if err != nil {
+			return err
+		}
+
+		creds = credentials.NewServerTLSFromCert(&cert)
+	}
+
+	s := grpc.NewServer(grpc.Creds(creds))
+
+	addr := fmt.Sprintf(":%d", port)
+
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	service := proto.NewUserzServiceServer(store)
+
+	proto.RegisterUserzServer(s, service)
+
+	go func() {
+		logger.Info().Msgf("Serving gRPC server on '%s'", addr)
+
+		err := s.Serve(listener)
+		if err != grpc.ErrServerStopped {
+			logger.Err(err).Msg("gRPC server failed")
+		}
+	}()
+
+	return nil
 }

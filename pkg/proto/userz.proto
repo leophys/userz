@@ -2,7 +2,7 @@ syntax = "proto3";
 package proto;
 
 option optimize_for = SPEED;
-option go_package = "github.com/leophys/userz/proto";
+option go_package = "github.com/leophys/userz/pkg/proto";
 
 message UserData {
   optional string first_name = 1;

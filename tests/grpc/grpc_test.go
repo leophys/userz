@@ -21,7 +21,7 @@ import (
 
 	"github.com/leophys/userz"
 	"github.com/leophys/userz/internal"
-	"github.com/leophys/userz/proto"
+	"github.com/leophys/userz/pkg/proto"
 	"github.com/leophys/userz/store/memory"
 )
 
@@ -214,7 +214,7 @@ func TestGRPCService(t *testing.T) {
 	require.NoError(err)
 	assert.Equal(id1, remove.User.Id)
 
-    // check that user is missing from the store
+	// check that user is missing from the store
 	list, err = client.List(ctx, &proto.ListRequest{ServiceOrigin: "test", PageSize: 1})
 	require.NoError(err)
 

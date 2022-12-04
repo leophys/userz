@@ -50,3 +50,9 @@ then run, from `proto/`
 ```
 go generate
 ```
+
+## Notification plugins
+
+To develop a new plugin to handle notifications, one must implement the
+interface at `github.com/leophys/userz/pkg/notifier`. The `.so` may be obtained
+compiling the main entrypoint with the `-buildmode=plugin` flag.

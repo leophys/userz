@@ -5,8 +5,7 @@ ENV CGO_ENABLED=1
 
 COPY . /src
 WORKDIR /src
-RUN go build -o ./ ${BUILD_OPTS} ./cmd/userz/... \
- && go build -o ./ ${BUILD_OPTS} -buildmode=plugin ./internal/pollednotifier/...
+RUN make OUTDIR="./" build
 
 FROM gcr.io/distroless/base-debian11
 

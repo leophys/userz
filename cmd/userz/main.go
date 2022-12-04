@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/hellofresh/health-go/v5"
+	pghealth "github.com/hellofresh/health-go/v5/checks/postgres"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
@@ -31,16 +33,19 @@ import (
 )
 
 const (
-	defaultPGHost      = "localhost"
-	defaultPGPort      = 5432
-	defaultHTTPPort    = 6000
-	defaultGRPCPort    = 7000
-	defaultMetricsPort = 25000
-	defaultHTTPRoute   = "/api"
-	defaultPluginPath  = "/pollednotifier.so"
+	defaultPGHost          = "localhost"
+	defaultPGPort          = 5432
+	defaultHTTPPort        = 6000
+	defaultGRPCPort        = 7000
+	defaultMetricsPort     = 25000
+	defaultHTTPRoute       = "/api"
+	defaultPluginPath      = "/pollednotifier.so"
+	defaultPGHealthTimeout = 5 * time.Second
 )
 
 var (
+	commit = "dev" // this gets overwritten at compile-time
+
 	flags = []cli.Flag{
 		&cli.BoolFlag{
 			Name:    "debug",
@@ -198,7 +203,7 @@ func run(c *cli.Context) error {
 		return err
 	}
 
-	metricsErr := serveMetrics(c, logger)
+	metricsErr := serveMetrics(c, logger, pgURL)
 
 	select {
 	case err := <-serveHTTPApi(ctx, api, c.Int("http-port")):
@@ -343,14 +348,34 @@ func startGRPCServer(c *cli.Context, store userz.Store, logger *zerolog.Logger) 
 	return nil
 }
 
-func serveMetrics(c *cli.Context, logger *zerolog.Logger) <-chan error {
+func serveMetrics(c *cli.Context, logger *zerolog.Logger, pgURL string) <-chan error {
 	out := make(chan error)
 
 	port := c.Int("metrics-port")
 
 	addr := fmt.Sprintf(":%d", port)
 
+	healthHandler, err := health.New(
+		health.WithComponent(health.Component{
+			Name:    "userz",
+			Version: commit,
+		}),
+		health.WithChecks(health.Config{
+			Name:      "postgres",
+			Timeout:   defaultPGHealthTimeout,
+			SkipOnErr: false,
+			Check: pghealth.New(pghealth.Config{
+				DSN: pgURL,
+			}),
+		}),
+	)
+	if err != nil {
+		out <- fmt.Errorf("cannot instantiate heathcheck endpoint: %w", err)
+		return out
+	}
+
 	router := chi.NewRouter()
+	router.Method(http.MethodGet, "/healthz", healthHandler.Handler())
 	router.Method(http.MethodGet, "/metrics", promhttp.Handler())
 
 	logger.Info().Msgf("Serving metrics on '%s'", addr)

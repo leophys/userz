@@ -4,15 +4,17 @@ COMPOSE ?= docker compose
 IMAGE ?= leophys/userz
 DBPORT ?= 5432
 DLV ?= dlv
+OUTDIR ?= bin/
+VERSION ?= $(shell git rev-list -1 HEAD)
 
 ./bin:
 	mkdir -p bin
 
 ./bin/userz: ./bin
-	$(GO) build $(BUILD_OPTS) -o bin/ ./cmd/userz/...
+	$(GO) build $(BUILD_OPTS) -o $(OUTDIR) ./cmd/userz/...
 
 ./bin/pollednotifier.so: ./bin
-	$(GO) build $(BUILD_OPTS) -buildmode=plugin -o bin/ ./internal/pollednotifier/...
+	$(GO) build $(BUILD_OPTS) -buildmode=plugin -o $(OUTDIR) ./internal/pollednotifier/...
 
 .PHONY: clean
 clean: ./bin
@@ -25,7 +27,7 @@ build: clean
 
 .PHONY: prod
 prod: clean
-	make BUILD_OPTS="-ldflags '-w -s'" build
+	make BUILD_OPTS="-ldflags '-X=main.commit=$(VERSION) -w -s'" build
 
 .PHONY: build-image
 build-image:
@@ -36,7 +38,7 @@ build-image:
 
 .PHONY: build-image-prod
 build-image-prod:
-	make BUILD_OPTS="-ldflags '-w -s'" build-image
+	make BUILD_OPTS="-ldflags '-X=main.commit=$(VERSION) -w -s'" build-image
 
 .PHONY: run
 run:

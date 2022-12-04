@@ -82,7 +82,7 @@ var (
 		},
 		&cli.IntFlag{
 			Name:    "metrics-port",
-			Usage:   "The port on which the metrics will be exposed (healthchech and prometheus)",
+			Usage:   "The port on which the metrics will be exposed (healthcheck and prometheus)",
 			EnvVars: []string{"METRICS_PORT"},
 			Value:   defaultMetricsPort,
 			Action:  validatePort,

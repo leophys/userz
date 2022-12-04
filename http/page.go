@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/leophys/userz"
+	"github.com/leophys/userz/internal/httputils"
 )
 
 const (
@@ -49,13 +50,13 @@ func (h *PageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	users, err := h.store.Page(expiring, filter, params)
 	if err != nil {
 		logger.Err(err).Msg("Failure in retrieving the users")
-		serverError(w, "Failure in retrieving the users")
+		httputils.ServerError(w, "Failure in retrieving the users")
 		return
 	}
 
 	if users == nil {
 		logger.Debug().Msg("No users found")
-		notFound(w, "No more pages")
+		httputils.NotFound(w, "No more pages")
 		return
 	}
 
@@ -64,40 +65,40 @@ func (h *PageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ids = append(ids, u.Id)
 	}
 	logger.Info().Strs("ID", ids).Msg("Users retrieved")
-	ok(w, users)
+	httputils.Ok(w, users)
 }
 
 func parsePageParams(w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) *userz.PageParams {
 	pageSizeStr := r.URL.Query().Get("pageSize")
 	if pageSizeStr == "" {
 		logger.Debug().Msg("Missing pageSize in request url")
-		badRequest(w, "Missing pageSize in request url")
+		httputils.BadRequest(w, "Missing pageSize in request url")
 		return nil
 	}
 	pageSize, err := strconv.ParseUint(pageSizeStr, 10, 32)
 	if err != nil {
 		logger.Debug().Msg("pageSize must be a non negative integer")
-		badRequest(w, "pageSize must be a non negative integer")
+		httputils.BadRequest(w, "pageSize must be a non negative integer")
 		return nil
 	}
 
 	offsetStr := r.URL.Query().Get("offset")
 	if offsetStr == "" {
 		logger.Debug().Msg("Missing offset in request url")
-		badRequest(w, "Missing offset in request url")
+		httputils.BadRequest(w, "Missing offset in request url")
 		return nil
 	}
 	offset, err := strconv.ParseUint(offsetStr, 10, 32)
 	if err != nil {
 		logger.Debug().Msg("offset must be a non negative integer")
-		badRequest(w, "offset must be a non negative integer")
+		httputils.BadRequest(w, "offset must be a non negative integer")
 		return nil
 	}
 
 	ord, err := userz.ParseOrder(r.URL.Query().Get("order_by"), r.URL.Query().Get("order_dir"))
 	if err != nil {
 		logger.Info().Err(err).Msg("Unacceptable order_by")
-		badRequest(w, "unacceptable order_by")
+		httputils.BadRequest(w, "unacceptable order_by")
 		return nil
 	}
 
@@ -142,7 +143,7 @@ func parseFilter(w http.ResponseWriter, r *http.Request, logger *zerolog.Logger)
 	filter, err := userz.ParseFilter(params)
 	if err != nil {
 		logger.Info().Err(err).Msg("Malformed filter")
-		badRequest(w, "Malformed filter")
+		httputils.BadRequest(w, "Malformed filter")
 		return nil, false
 	}
 

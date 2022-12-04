@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/leophys/userz"
+	"github.com/leophys/userz/internal/httputils"
 )
 
 const (
@@ -30,7 +31,7 @@ func (h *RemoveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		badRequest(w, "Missing user id in request url")
+		httputils.BadRequest(w, "Missing user id in request url")
 		return
 	}
 
@@ -40,10 +41,10 @@ func (h *RemoveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	user, err := h.store.Remove(expiring, id)
 	if err != nil {
 		logger.Err(err).Str("ID", id).Msg("Failure in removing the user")
-		serverError(w, "Failure in removing the user")
+		httputils.ServerError(w, "Failure in removing the user")
 		return
 	}
 
 	logger.Info().Str("ID", user.Id).Msg("User removed")
-	ok(w, user)
+	httputils.Ok(w, user)
 }

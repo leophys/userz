@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -29,7 +30,7 @@ func (h *RemoveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Str("Handler", "RemoveHandler").
 		Logger()
 
-	id := chi.URLParam(r, "id")
+	id := strings.Trim(chi.URLParam(r, "id"), "\"")
 	if id == "" {
 		httputils.BadRequest(w, "Missing user id in request url")
 		return

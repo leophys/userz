@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"plugin"
 	"syscall"
 	"time"
 
@@ -22,8 +23,10 @@ import (
 	"github.com/leophys/userz"
 	"github.com/leophys/userz/http"
 	"github.com/leophys/userz/internal"
+	"github.com/leophys/userz/pkg/notifier"
 	"github.com/leophys/userz/pkg/proto"
 	"github.com/leophys/userz/prometheus"
+	"github.com/leophys/userz/store/notifying"
 	"github.com/leophys/userz/store/pg"
 )
 
@@ -34,6 +37,7 @@ const (
 	defaultGRPCPort    = 7000
 	defaultMetricsPort = 25000
 	defaultHTTPRoute   = "/api"
+	defaultPluginPath  = "/pollednotifier.so"
 )
 
 var (
@@ -113,8 +117,19 @@ var (
 		},
 		&cli.BoolFlag{
 			Name:    "pgssl",
-			Usage:   "Wether to connect to the postgres database in strict ssl mode",
+			Usage:   "Whether to connect to the postgres database in strict ssl mode",
 			EnvVars: []string{"POSTGRES_SSL"},
+		},
+		&cli.BoolFlag{
+			Name:    "disable-notifications",
+			Usage:   "Whether to disable notifications",
+			EnvVars: []string{"DISABLE_NOTIFICATIONS"},
+		},
+		&cli.PathFlag{
+			Name:    "notification-plugin",
+			Usage:   "Specify path to the .so that provides the notification functionality",
+			EnvVars: []string{"NOTIFICATION_PLUGIN"},
+			Value:   defaultPluginPath,
 		},
 	}
 )
@@ -165,6 +180,15 @@ func run(c *cli.Context) error {
 		logger.Err(err).Msg("Failed to initialize store")
 		return err
 	}
+
+	if !c.Bool("disable-notifications") {
+		store, err = wrapWithNotifyingStore(ctx, store, c.Path("notification-plugin"))
+		if err != nil {
+			logger.Err(err).Msg("Failed to initialize notifying store")
+			return err
+		}
+	}
+
 	store = prometheus.NewMetricsStore(store)
 
 	api := httpapi.New(defaultHTTPRoute, store, logger)
@@ -336,4 +360,29 @@ func serveMetrics(c *cli.Context, logger *zerolog.Logger) <-chan error {
 	}()
 
 	return out
+}
+
+func wrapWithNotifyingStore(ctx context.Context, wrapped userz.Store, pluginPath string) (userz.Store, error) {
+	plug, err := plugin.Open(pluginPath)
+	if err != nil {
+		return nil, err
+	}
+
+	sym, err := plug.Lookup("Provider")
+	if err != nil {
+		return nil, err
+	}
+
+	ref, ok := (sym).(*notifier.Notifier)
+	if !ok {
+		return nil, fmt.Errorf("Not a notifier: %T", ref)
+	}
+
+	provider := *ref
+
+	if err := provider.Init(ctx); err != nil {
+		return nil, err
+	}
+
+	return notifying.NewNotifyingStore(wrapped, provider), nil
 }

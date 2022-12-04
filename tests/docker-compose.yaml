@@ -14,11 +14,12 @@ services:
     image: golang:1.19
     environment:
       POSTGRES_URL: "postgres://userz:passw0rd@db:5432/userz?sslmode=disable"
-      CGO_ENABLED: "0"
+      CGO_ENABLED: "1"
+      PLUGIN_PATH: "/plugin/pollednotifier.so"
     volumes:
       - $PWD:/code
       - $GOPATH/pkg:/go/
     working_dir: /code
-    command: go test -v -p 1 -timeout 600s ./tests/... -tags=integration
+    command: ./tests/run.sh
     depends_on:
       - db

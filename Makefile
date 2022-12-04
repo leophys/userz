@@ -9,7 +9,10 @@ DLV ?= dlv
 	mkdir -p bin
 
 ./bin/userz: ./bin
-	$(GO) build $(BUILD_OPTS) -o bin/ ./...
+	$(GO) build $(BUILD_OPTS) -o bin/ ./cmd/userz/...
+
+./bin/pollednotifier.so: ./bin
+	$(GO) build $(BUILD_OPTS) -buildmode=plugin -o bin/ ./internal/pollednotifier/...
 
 .PHONY: clean
 clean: ./bin
@@ -18,6 +21,7 @@ clean: ./bin
 .PHONY: build
 build: clean
 	make ./bin/userz
+	make ./bin/pollednotifier.so
 
 .PHONY: prod
 prod: clean
@@ -40,6 +44,10 @@ run:
 	$(COMPOSE) up -d
 	$(COMPOSE) logs -f userz
 
+.PHONY: data
+data:
+	./tests/init_db.sh
+
 .PHONY:
 stop:
 	$(COMPOSE) stop
@@ -47,16 +55,16 @@ stop:
 
 .PHONY: test
 test:
-	$(GO) test -v ./...
+	$(GO) test -v -count=1 ./...
 
 .PHONY: test-integration
 test-integration:
 	$(COMPOSE) -f tests/docker-compose.yaml run --rm tester && \
-		$(COMPOSE) -f tests/docker-compose.yaml down
+		$(COMPOSE) -f tests/docker-compose.yaml down --volumes
 
 .PHONY: test-clean
 test-clean:
-	$(COMPOSE) -f tests/docker-compose.yaml down
+	$(COMPOSE) -f tests/docker-compose.yaml down --volumes
 
 .PHONY: dbg-integration
 dbg-integration:

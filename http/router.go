@@ -4,12 +4,18 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog"
 
 	"github.com/leophys/userz"
+	"github.com/leophys/userz/internal/httputils"
 )
 
-func New(baseRoute string, store userz.Store) chi.Router {
+func New(baseRoute string, store userz.Store, logger *zerolog.Logger) chi.Router {
 	router := chi.NewRouter()
+
+	if logger != nil {
+		router.Use(httputils.LoggerMiddleware(*logger))
+	}
 
 	base := strings.TrimRight(baseRoute, "/")
 

@@ -167,7 +167,7 @@ func run(c *cli.Context) error {
 	}
 	store = prometheus.NewMetricsStore(store)
 
-	api := httpapi.New(defaultHTTPRoute, store)
+	api := httpapi.New(defaultHTTPRoute, store, logger)
 
 	if err := startGRPCServer(c, store, logger); err != nil {
 		logger.Err(err).Msg("Failed to initialize gRPC server")

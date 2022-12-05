@@ -4,6 +4,7 @@
  - [ ] [caching store][#caching-store]
  - [ ] [kubernetes testbed][#kubernetes]
  - [ ] [graphql][#graphql]
+ - [ ] [CI][#ci]
 
 ## <a href=#flakyness>Fix flakyness of integration tests</a>
 
@@ -25,3 +26,8 @@ cluster with [`kind`](https://kind.sigs.k8s.io/).
 ## <a href=#graphql>GraphQL endpoint</a>
 
 Add the same HTTP REST API as a [GraphQL](https://graphql.org/) endpoint.
+
+## <a href=#ci>Add continuous integration</a>
+
+A continuous integration pipeline is needed in order to ensure a continuous
+check of the state of the project and enforce minimum quality standards.
